@@ -202,7 +202,7 @@ for pair, s in Dict_similarity.items():
     prob = lsh_probability(s, r, b)
     print(f"{pair[0]} vs {pair[1]} -> {prob:.4f}")           
 
-spark.stop()
+
 
 ################################################
 #Min-Hashing on MovieLens dataset
@@ -300,6 +300,6 @@ for t in [50,100,200]:
     print("Avg FP:", total_fp/5)
     print("Avg FN:", total_fn/5)
     
-    
+spark.stop()    
 # PART 2 — LSH Implementation
     
