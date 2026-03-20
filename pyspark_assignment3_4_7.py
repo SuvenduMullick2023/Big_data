@@ -1,5 +1,6 @@
 # ============================================
 # HYBRID RECOMMENDER (META-LEARNING)
+#  Task 7: Implementing a Hybrid Recommendation Model
 # ============================================
 
 from pyspark.sql import SparkSession
@@ -191,3 +192,109 @@ print("\nHYBRID RESULTS")
 print("RMSE:", rmse)
 print("Precision@5:", precision_avg)
 print("Recall@5:", recall_avg)
+
+
+
+# ============================================
+# COLD-START USER ANALYSIS
+# ============================================
+
+print("\n--- Cold-Start User Analysis ---")
+
+# ---------------------------
+# 1 Identify Cold-Start Users
+# ---------------------------
+
+# Users with <= 3 ratings in training
+user_counts = train_pd.groupby("userId").size()
+print(user_counts)
+cold_users = user_counts[user_counts <= 25].index.tolist()
+
+print("Number of cold-start users:", len(cold_users))
+
+# ---------------------------
+# 2 Filter Test Data
+# ---------------------------
+
+cold_test = test_pd[test_pd['userId'].isin(cold_users)]
+
+print("Cold-start test samples:", len(cold_test))
+
+# ---------------------------
+# 3 Evaluation Function
+# ---------------------------
+
+def evaluate_model(predict_func, name):
+
+    errors=[]
+    precision_list=[]
+    recall_list=[]
+
+    threshold=4
+
+    test_users = cold_test['userId'].unique()
+
+    for u in test_users:
+
+        user_data = cold_test[cold_test['userId']==u]
+
+        preds=[]
+        actuals=[]
+
+        for _, row in user_data.iterrows():
+            m = row['movieId']
+            true_r = row['rating']
+
+            pred = predict_func(u,m)
+
+            preds.append((m,pred))
+            actuals.append((m,true_r))
+
+            errors.append((true_r - pred)**2)
+
+        # top-5 recommendations
+        preds_sorted = sorted(preds, key=lambda x:x[1], reverse=True)[:5]
+        rec_ids = [p[0] for p in preds_sorted]
+
+        relevant = [m for m,r in actuals if r>=threshold]
+
+        hits = set(rec_ids) & set(relevant)
+
+        precision = len(hits)/5 if len(rec_ids)>0 else 0
+        recall = len(hits)/len(relevant) if len(relevant)>0 else 0
+
+        precision_list.append(precision)
+        recall_list.append(recall)
+
+    rmse = sqrt(sum(errors)/len(errors)) if errors else 0
+    precision_avg = np.mean(precision_list) if precision_list else 0
+    recall_avg = np.mean(recall_list) if recall_list else 0
+
+    print(f"\n{name} Cold-Start Results")
+    print("RMSE:", rmse)
+    print("Precision@5:", precision_avg)
+    print("Recall@5:", recall_avg)
+
+# ---------------------------
+# 4 Define Model Wrappers
+# ---------------------------
+
+# Hybrid
+def hybrid_wrapper(u,m):
+    return hybrid_predict(u,m)
+
+# CF (baseline)
+def cf_wrapper(u,m):
+    return cf_predict(u,m)
+
+# CBF
+def cbf_wrapper(u,m):
+    return cbf_predict(u,m)
+
+# ---------------------------
+# 5 Run Evaluation
+# ---------------------------
+
+evaluate_model(cf_wrapper, "CF Model")
+evaluate_model(cbf_wrapper, "CBF Model")
+evaluate_model(hybrid_wrapper, "Hybrid Model")

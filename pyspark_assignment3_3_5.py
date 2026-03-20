@@ -1,5 +1,9 @@
+# Part 3: Matrix Factorization for Recommender Systems
+# Task 5: Implementing SVD for Recommendations
+# you will perform Singular Value Decomposition (SVD) on the user-item rating matrix. Use the factorized matrices
+
 # ============================================
-# SVD BASED RECOMMENDER SYSTEM
+# SVD BASED RECOMMENDER SYSTEM- scratch
 # ============================================
 
 from pyspark.sql import SparkSession

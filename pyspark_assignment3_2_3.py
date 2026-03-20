@@ -1,3 +1,8 @@
+# Part 2: Collaborative Filtering
+# Task 3: User-Based Collaborative Filtering
+
+# This code is showing out of memory issue --- so the modified one is "pyspark_assignment3_2_v1.py"
+
 # ============================================
 # USER BASED COLLABORATIVE FILTERING
 # DEBUG VERSION

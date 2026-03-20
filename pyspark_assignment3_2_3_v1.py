@@ -1,3 +1,5 @@
+# Part 2: Collaborative Filtering
+# Task 3: User-Based Collaborative Filtering
 # ============================================
 # FAST USER BASED COLLABORATIVE FILTERING
 # ============================================
@@ -59,7 +61,7 @@ def pearson(u1,u2):
 
     common = set(u1.keys()) & set(u2.keys())
 
-    if len(common) < 1:   # 🔥 pruning (important!)
+    if len(common) < 1:   #  pruning (important!)
         return 0
 
     r1 = np.array([u1[m] for m in common])
@@ -101,7 +103,7 @@ for i,u1 in enumerate(users):
         if sim > 0:
             sims.append((u2, sim))
 
-    # 🔥 keep only top K similar users
+    #  keep only top K similar users
     sims = sorted(sims, key=lambda x: x[1], reverse=True)[:K_SIM]
 
     user_neighbors[u1] = sims
@@ -116,38 +118,56 @@ print("Neighbor computation done")
 def predict_fast(user_id, movie_id):
 
     neighbors = user_neighbors.get(user_id, [])
-
     user_mean = np.mean(list(user_dict[user_id].values()))
 
-    num = 0
-    den = 0
+    num, den = 0, 0
 
     for (nbr, sim) in neighbors:
-
         if movie_id in user_dict[nbr]:
-
             nbr_mean = np.mean(list(user_dict[nbr].values()))
-
             num += sim * (user_dict[nbr][movie_id] - nbr_mean)
             den += abs(sim)
 
     if den == 0:
-        return user_mean
+        pred = user_mean
+    else:
+        pred = user_mean + (num/den)
 
-    return user_mean + (num/den)
+    #  CLAMP
+    return min(5, max(0.5, pred))
+
+#  Task 11: Neighborhood-Based Explanations without breaking  logic.
+# ---------------------------
+#  EXPLANATION FUNCTION
+# ---------------------------
+def explain_recommendation(user_id, movie_id, top_k=3):
+
+    neighbors = user_neighbors.get(user_id, [])
+
+    explanation = []
+
+    for nbr, sim in neighbors:
+        if movie_id in user_dict[nbr]:
+            explanation.append((nbr, sim, user_dict[nbr][movie_id]))
+
+    # Sort by similarity
+    explanation = sorted(explanation, key=lambda x: x[1], reverse=True)[:top_k]
+
+    return explanation
+
 
 
 # ---------------------------
 # 6 Recommend Movies (FAST)
 # ---------------------------
 
-def recommend_fast(user_id, N=5):
+def recommend_fast_old(user_id, N=5):
 
     rated = user_dict[user_id]
 
     candidate_movies = set()
 
-    # 🔥 only consider movies rated by neighbors
+    #  only consider movies rated by neighbors
     for nbr,_ in user_neighbors[user_id]:
         candidate_movies.update(user_dict[nbr].keys())
 
@@ -163,6 +183,35 @@ def recommend_fast(user_id, N=5):
     ranked = sorted(scores.items(), key=lambda x:x[1], reverse=True)
 
     return ranked[:N]
+
+# Task 11: Neighborhood-Based Explanations without breaking  logic. upgradation 
+def recommend_fast(user_id, N=5):
+
+    rated = user_dict[user_id]
+
+    candidate_movies = set()
+
+    for nbr,_ in user_neighbors[user_id]:
+        candidate_movies.update(user_dict[nbr].keys())
+
+    scores = {}
+    explanations = {}
+
+    for movie in candidate_movies:
+
+        if movie in rated:
+            continue
+
+        pred = predict_fast(user_id, movie)
+        scores[movie] = pred
+
+        #  store explanation
+        explanations[movie] = explain_recommendation(user_id, movie)
+
+    ranked = sorted(scores.items(), key=lambda x:x[1], reverse=True)
+
+    # return movie + explanation
+    return [(m, score, explanations[m]) for m, score in ranked[:N]]
 
 
 # ---------------------------
@@ -204,7 +253,7 @@ print("\nEvaluating model...")
 
 results=[]
 
-for user in list(liked_dict.keys())[:200]:   # 🔥 limit for speed
+'''for user in list(liked_dict.keys())[:200]:   # 🔥 limit for speed
 
     try:
 
@@ -229,7 +278,68 @@ for user in list(liked_dict.keys())[:200]:   # 🔥 limit for speed
         ))
 
     except:
+        continue'''
+
+# Task 11: Neighborhood-Based Explanations without breaking  logic. upgradation 
+for user in list(liked_dict.keys())[:10]:   # reduce for readability
+
+    try:
+        recs = recommend_fast(user,5)
+
+        print("\n==============================")
+        print(f"User {user} Recommendations")
+
+        rec_ids = []
+
+        for movie, score, expl in recs:
+
+            rec_ids.append(movie)
+
+            print(f"\n🎬 {id_title.get(movie, movie)} (Pred: {round(score,2)})")
+
+            #  Explanation
+            print("    Because similar users liked it:")
+
+            for nbr, sim, rating in expl:
+                print(f"      User {nbr} (sim={round(sim,2)}) rated {rating}")
+
+        relevant = set(liked_dict[user])
+        hits = set(rec_ids) & relevant
+
+        precision = len(hits)/5
+        recall = len(hits)/len(relevant)
+
+        results.append(Row(
+            userId=user,
+            precision_at_5=float(precision),
+            recall_at_5=float(recall),
+            f1_score=float((2*precision*recall/(precision+recall)) if precision+recall else 0)
+        ))
+
+    except:
         continue
+
+# Add Item-Based Explanation
+# ----------------------------------------------------------
+def explain_item_based(movie_id, top_k=3):
+
+    users_who_liked = [
+        u for u in user_dict
+        if movie_id in user_dict[u] and user_dict[u][movie_id] >= 4
+    ]
+
+    similar_movies = {}
+
+    for u in users_who_liked:
+        for m in user_dict[u]:
+            if m != movie_id:
+                similar_movies[m] = similar_movies.get(m, 0) + 1
+
+    ranked = sorted(similar_movies.items(), key=lambda x: x[1], reverse=True)
+
+    return ranked[:top_k]
+
+# ----------------------------------------------------------------------
 
 report_df = spark.createDataFrame(results)
 

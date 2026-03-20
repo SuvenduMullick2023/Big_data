@@ -1,3 +1,5 @@
+# Part 3: Matrix Factorization for Recommender Systems
+# Task 6: Implementing Matrix Factorization with the Surprise Library
 # ============================================
 # SURPRISE SVD RECOMMENDER SYSTEM
 # ============================================

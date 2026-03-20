@@ -1,3 +1,8 @@
+# Part 1: Content-Based Filtering
+# Task 1: Implementing TF-IDF Based Recommendation
+#In this task, you will build a content-based recommender system using Term Frequency-Inverse Document Frequency (TFIDF).
+# The goal is to recommend movies similar to a given movie based on textual features.
+
 # Install pyspark if needed
 # !pip install pyspark
 
@@ -10,7 +15,7 @@ from pyspark.sql.types import DoubleType
 import numpy as np
 import os 
 
-
+# Part 1 — Content Based Filtering using PySpark
 
 '''spark = SparkSession.builder \
     .appName("Movie Recommender System") \
@@ -31,6 +36,7 @@ movies.show(5)
 
 
 # Step 4: Extract Movie Descriptions (Genres)
+# Convert genres into tokens.
 
 movies = movies.withColumn("genres", lower(col("genres")))
 
@@ -121,6 +127,15 @@ for title, score in recommendations:
 
 #############################################################################
 
+
+# Part 1: Content-Based Filtering
+# Task 2: User-Profile-Based Content Recommender
+
+# In this task, you will build a content-based recommender system that personalizes recommendations based on user
+# preferences. Instead of relying solely on item descriptions, you will construct user profiles from their historical interactions (i.e.,
+# rated movies) and use them to suggest relevant movies.
+
+
 # Install pyspark if needed
 # !pip install pyspark
 
@@ -135,7 +150,7 @@ import os
 
 
 
-
+# We also use ratings.csv to build user preferences.
 
 ratings = spark.read.csv(path + 
     "ml-latest/ratings.csv",
@@ -188,6 +203,62 @@ from pyspark.sql.types import ArrayType, DoubleType
     "weighted_features",
     col("features") * col("rating")
 )'''
+
+
+
+# Define Prediction Function
+def predict_fn(X, user_profile):
+    """
+    X: movie feature matrix (n_samples, n_features)
+    user_profile: user vector
+    """
+    scores = []
+
+    for vec in X:
+        score = cosine_similarity(user_profile, vec)
+        scores.append(score)
+
+    return np.array(scores)
+
+# SHAP Explainer
+
+def explain_recommendation_shap(user_id, movie_index):
+
+    user_profile = np.array(user_profiles_dict[user_id])
+
+    # background sample (small subset for speed)
+    background = movie_feature_matrix[np.random.choice(len(movie_feature_matrix), 100, replace=False)]
+
+    explainer = shap.KernelExplainer(
+        lambda x: predict_fn(x, user_profile),
+        background
+    )
+
+    # Explain one movie
+    movie_vec = movie_feature_matrix[movie_index].reshape(1, -1)
+
+    shap_values = explainer.shap_values(movie_vec)
+
+    return shap_values, movie_vec
+
+# Display Explanation
+
+def print_shap_explanation(user_id, movie_index, top_k=10):
+
+    shap_values, movie_vec = explain_recommendation_shap(user_id, movie_index)
+
+    feature_contrib = shap_values[0]
+
+    # Get top features
+    top_features_idx = np.argsort(np.abs(feature_contrib))[::-1][:top_k]
+
+    print("\n🔍 SHAP Explanation")
+    print(f"User {user_id} → Movie: {movie_titles[movie_index]}")
+
+    for idx in top_features_idx:
+        print(f"Feature {idx}: Contribution {feature_contrib[idx]:.4f}")
+        
+        
 #PySpark, you cannot directly multiply a vector column by a scalar like this:
 #Spark SQL does not support vector-scalar multiplication directly.
 # must convert the feature vector into an array, multiply each element, and then convert it back
@@ -203,6 +274,9 @@ def multiply_vector(arr, rating):
 
 multiply_udf = udf(multiply_vector, ArrayType(DoubleType()))
 
+# user profile creation
+
+# numaretor 
 user_movie_vectors = user_movie_vectors.withColumn(
     "weighted_array",
     multiply_udf(col("features_array"), col("rating"))
@@ -245,6 +319,7 @@ def array_sum(arrays):
 
 array_sum_udf = udf(array_sum, ArrayType(DoubleType()))'''
 
+
 # Then collect arrays per user:
 from pyspark.sql.functions import collect_list
 
@@ -281,7 +356,7 @@ user_profiles = user_profiles.withColumn(
 )
 
 print(" Now each user has a profile vector.")
-user_profiles.show(5)
+#user_profiles.show(5)
 
 # Now each user has a profile vector.
 
@@ -364,9 +439,28 @@ def recommend_movies_for_user(user_id, top_n=5):
     
     return scores[:top_n]
 
+import shap
+
+# Convert Spark TF-IDF vectors → NumPy
+movie_feature_matrix = np.array([row['features'].toArray() for row in movie_vectors])
+movie_titles = [row['title'] for row in movie_vectors]
 
 # Test User Recommendation
 recommend_movies_for_user(1,5)
+
+# Example: explain top recommendation
+user_id = 1
+recs = recommend_movies_for_user(user_id, 5)
+
+# pick first movie
+movie_name = recs[0][0]
+
+movie_index = movie_titles.index(movie_name)
+
+print_shap_explanation(user_id, movie_index)
+
+vocab = cv_model.vocabulary
+print(f"{vocab[idx]}: {contribution}")
 
 spark.stop()
          

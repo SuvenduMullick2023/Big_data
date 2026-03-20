@@ -1,3 +1,8 @@
+# Part 2: Collaborative Filtering
+# Task 4: Item-Based Collaborative Filtering
+# Item-Based Collaborative Filtering recommends items based on their similarity to items a user has previously liked or rated
+# highly. The key idea is: If two items are rated similarly by many users, they are likely to be similar.
+
 # ============================================
 # ITEM BASED COLLABORATIVE FILTERING
 # FINAL SUBMISSION VERSION
