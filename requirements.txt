@@ -1,0 +1,8 @@
+joblib==1.5.3
+numpy==1.26.4
+pandas==3.0.1
+python-dateutil==2.9.0.post0
+pyspark
+scikit-surprise==1.1.4
+scipy==1.17.1
+six==1.17.0
