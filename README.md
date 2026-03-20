@@ -42,3 +42,17 @@ The models are rigorously tested using:
 Ensure you have a Spark environment configured.
 ```bash
 pip install pyspark numpy matplotlib pandas graphframes shap
+
+Running a Module
+To execute the Movie Recommendation engine
+```bash
+spark-submit pyspark_assignment3_1.py
+
+📈 Visualizations
+The repository includes scripts to generate:
+
+LSH S-Curves for threshold optimization.
+
+Network graphs showing author influence and connectivity.
+
+Error distribution plots for recommendation engines.
