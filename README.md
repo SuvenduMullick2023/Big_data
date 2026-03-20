@@ -42,11 +42,13 @@ The models are rigorously tested using:
 Ensure you have a Spark environment configured.
 ```bash
 pip install pyspark numpy matplotlib pandas graphframes shap
+```bash
 
 Running a Module
 To execute the Movie Recommendation engine
 ```bash
 spark-submit pyspark_assignment3_1.py
+```bash
 
 📈 Visualizations
 The repository includes scripts to generate:
